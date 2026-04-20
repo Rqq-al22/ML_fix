@@ -20,7 +20,7 @@ df_original = pd.read_csv(file_path, sep=';')
 # =========================
 st.subheader("📊 Data Preview (4 Features)")
 
-fitur = ['Stress Level', 'Productivity', 'Sleep Quality', 'Screen Time']
+fitur = ['stress_level_0_10', 'productivity_0_100', 'sleep_quality_1_5', 'screen_time_hours']
 st.dataframe(df_original[fitur])
 
 st.divider()
