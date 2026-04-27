@@ -76,6 +76,38 @@ for j in range(i + 1, len(axes)):
 plt.tight_layout()
 plt.show()
 
+"""### Heatmap Korelasi
+
+Mari kita visualisasikan matriks korelasi fitur-fitur yang sudah diskalakan untuk memahami hubungan antar fitur. Ini dapat membantu mengidentifikasi fitur-fitur yang sangat berkorelasi yang mungkin mempengaruhi hasil klastering.
+"""
+
+# Identify the original 10 features from the initial dataset load
+original_features = ['screen_time_hours', 'work_screen_hours', 'leisure_screen_hours', 'sleep_hours',
+                     'sleep_quality_1_5', 'stress_level_0_10', 'productivity_0_100',
+                     'exercise_minutes_per_week', 'social_hours_per_week', 'mental_wellness_index_0_100']
+
+# Calculate the correlation matrix for only these original features
+corr_matrix = df[original_features].corr()
+
+# Set up the matplotlib figure
+plt.figure(figsize=(12, 10))
+
+# Draw the heatmap with the mask and correct aspect ratio
+sns.heatmap(corr_matrix, annot=True, cmap='coolwarm', fmt='.2f', linewidths=.5)
+plt.title('Correlation Heatmap of the 10 Original Dataset Features')
+plt.show()
+
+"""### Pemilihan Fitur untuk Klastering
+
+Berdasarkan permintaan Anda, kita akan memilih fitur-fitur berikut untuk klastering: `stress_level_0_10`, `productivity_0_100`, `sleep_quality_1_5`, dan `screen_time_hours`. Fitur-fitur ini akan menjadi dasar analisis klastering kita.
+"""
+
+selected_features = ['stress_level_0_10', 'productivity_0_100', 'sleep_quality_1_5', 'screen_time_hours']
+df_selected = df[selected_features]
+
+print("First 5 rows of the selected features for clustering:")
+display(df_selected.head())
+
 """### Pemilihan Fitur
 
 Untuk analisis ini, kita akan menggunakan semua fitur numerik yang tersedia. Semua kolom tampak relevan untuk memahami berbagai aspek kesejahteraan dan potensi hubungannya dalam klastering.
@@ -86,45 +118,13 @@ Algoritma klastering, terutama yang berbasis jarak seperti K-Means dan DBSCAN, s
 """
 
 from sklearn.preprocessing import StandardScaler
-
-# Initialize StandardScaler
 scaler = StandardScaler()
 
-# Scale the features
-df_scaled = scaler.fit_transform(df)
+df_scaled = scaler.fit_transform(df_selected)
+df_scaled = pd.DataFrame(df_scaled, columns=selected_features)
 
-# Convert the scaled array back to a DataFrame for easier handling and inspection
-df_scaled = pd.DataFrame(df_scaled, columns=df.columns)
-
-print("First 5 rows of the scaled dataset:")
+print("First 5 rows:")
 display(df_scaled.head())
-
-"""### Heatmap Korelasi
-
-Mari kita visualisasikan matriks korelasi fitur-fitur yang sudah diskalakan untuk memahami hubungan antar fitur. Ini dapat membantu mengidentifikasi fitur-fitur yang sangat berkorelasi yang mungkin mempengaruhi hasil klastering.
-"""
-
-# Calculate the correlation matrix
-corr_matrix = df_scaled.corr()
-
-# Set up the matplotlib figure
-plt.figure(figsize=(12, 10))
-
-# Draw the heatmap with the mask and correct aspect ratio
-sns.heatmap(corr_matrix, annot=True, cmap='coolwarm', fmt='.2f', linewidths=.5)
-plt.title('Correlation Heatmap of Scaled Features')
-plt.show()
-
-"""### Pemilihan Fitur untuk Klastering
-
-Berdasarkan permintaan Anda, kita akan memilih fitur-fitur berikut untuk klastering: `stress_level_0_10`, `productivity_0_100`, `sleep_quality_1_5`, dan `screen_time_hours`. Fitur-fitur ini akan menjadi dasar analisis klastering kita.
-"""
-
-selected_features = ['stress_level_0_10', 'productivity_0_100', 'sleep_quality_1_5', 'screen_time_hours']
-df_selected = df_scaled[selected_features]
-
-print("First 5 rows of the selected features for clustering:")
-display(df_selected.head())
 
 """### Menentukan Klaster Optimal menggunakan Metode Elbow (K-Means)
 
@@ -138,7 +138,7 @@ k_range = range(2, 11) # K from 2 to 10
 
 for k in k_range:
     kmeans = KMeans(n_clusters=k, random_state=42, n_init=10) # Set n_init to suppress warning
-    kmeans.fit(df_selected)
+    kmeans.fit(df_scaled)
     wcss.append(kmeans.inertia_)
 
 # Plotting the Elbow Method
@@ -166,8 +166,8 @@ silhouette_scores = []
 
 for k in k_range:
     kmeans = KMeans(n_clusters=k, random_state=42, n_init=10)
-    cluster_labels = kmeans.fit_predict(df_selected)
-    silhouette_avg = silhouette_score(df_selected, cluster_labels)
+    cluster_labels = kmeans.fit_predict(df_scaled)
+    silhouette_avg = silhouette_score(df_scaled, cluster_labels)
     silhouette_scores.append(silhouette_avg)
 
 # Plotting the Silhouette Scores
@@ -198,13 +198,13 @@ print(f"Applying K-Means with K={optimal_k_2}")
 
 # Apply K-Means with K=2
 kmeans_k2 = KMeans(n_clusters=optimal_k_2, random_state=42, n_init=10)
-df['cluster_kmeans_k2'] = kmeans_k2.fit_predict(df_selected)
+df['cluster_kmeans_k2'] = kmeans_k2.fit_predict(df_scaled)
 
 print("\nFirst 5 rows of the dataset with K-Means K=2 cluster labels:")
 display(df.head())
 
 # Calculate and display the final Silhouette Score for K=2
-final_silhouette_score_k2 = silhouette_score(df_selected, df['cluster_kmeans_k2'])
+final_silhouette_score_k2 = silhouette_score(df_scaled, df['cluster_kmeans_k2'])
 print(f"\nFinal Silhouette Score for K={optimal_k_2}: {final_silhouette_score_k2:.4f}")
 
 """### Memvisualisasikan Hasil Klastering K-Means (K=2) menggunakan PCA
@@ -216,7 +216,7 @@ from sklearn.decomposition import PCA
 
 # Apply PCA to reduce to 2 components for visualization
 pca_k2 = PCA(n_components=2)
-df_pca_k2 = pca_k2.fit_transform(df_selected)
+df_pca_k2 = pca_k2.fit_transform(df_scaled)
 
 # Create a DataFrame for the PCA results
 df_pca_k2 = pd.DataFrame(data=df_pca_k2, columns=['Principal Component 1', 'Principal Component 2'])
@@ -298,13 +298,13 @@ print(f"Optimal K based on user request: {optimal_k}")
 
 # Apply K-Means with the chosen K
 kmeans_optimal = KMeans(n_clusters=optimal_k, random_state=42, n_init=10)
-df['cluster_kmeans'] = kmeans_optimal.fit_predict(df_selected)
+df['cluster_kmeans'] = kmeans_optimal.fit_predict(df_scaled)
 
 print("\nFirst 5 rows of the dataset with K-Means cluster labels:")
 display(df.head())
 
 # Calculate and display the final Silhouette Score for the optimal K
-final_silhouette_score = silhouette_score(df_selected, df['cluster_kmeans'])
+final_silhouette_score = silhouette_score(df_scaled, df['cluster_kmeans'])
 print(f"\nFinal Silhouette Score for K={optimal_k}: {final_silhouette_score:.4f}")
 
 """### Memvisualisasikan Hasil Klastering K-Means (K Optimal) menggunakan PCA
@@ -320,7 +320,7 @@ from sklearn.decomposition import PCA
 
 # Apply PCA to reduce to 2 components for visualization
 pca = PCA(n_components=2)
-df_pca = pca.fit_transform(df_selected)
+df_pca = pca.fit_transform(df_scaled)
 
 # Create a DataFrame for the PCA results
 df_pca = pd.DataFrame(data=df_pca, columns=['Principal Component 1', 'Principal Component 2'])
@@ -351,7 +351,7 @@ from sklearn.decomposition import PCA
 
 # Apply PCA to reduce to 2 components for visualization
 pca = PCA(n_components=2)
-df_pca = pca.fit_transform(df_selected)
+df_pca = pca.fit_transform(df_scaled)
 
 # Create a DataFrame for the PCA results
 df_pca = pd.DataFrame(data=df_pca, columns=['Principal Component 1', 'Principal Component 2'])
@@ -449,10 +449,10 @@ for linkage in linkage_methods:
 
         # Apply Agglomerative Clustering
         agg_clustering = AgglomerativeClustering(n_clusters=k, linkage=linkage)
-        cluster_labels = agg_clustering.fit_predict(df_selected)
+        cluster_labels = agg_clustering.fit_predict(df_scaled)
 
         # Calculate Silhouette Score
-        score = silhouette_score(df_selected, cluster_labels)
+        score = silhouette_score(df_scaled, cluster_labels)
         scores_for_linkage.append(score)
     silhouette_results[linkage] = scores_for_linkage
 
@@ -495,7 +495,7 @@ display(df.head())
 
 # Prepare data for PCA visualization
 pca = PCA(n_components=2)
-df_pca_agg = pca.fit_transform(df_selected)
+df_pca_agg = pca.fit_transform(df_scaled)
 df_pca_agg = pd.DataFrame(data=df_pca_agg, columns=['Principal Component 1', 'Principal Component 2'])
 df_pca_agg['cluster'] = df['cluster_agglomerative']
 
@@ -530,7 +530,7 @@ import seaborn as sns
 
 # Apply Agglomerative Clustering with K=3 and 'average' linkage
 agg_clustering_k3 = AgglomerativeClustering(n_clusters=3, linkage='average')
-df['cluster_agglomerative_k3'] = agg_clustering_k3.fit_predict(df_selected)
+df['cluster_agglomerative_k3'] = agg_clustering_k3.fit_predict(df_scaled)
 
 print(f"Agglomerative Clustering applied with K=3 and linkage='average'.")
 print("\nFirst 5 rows of the dataset with Agglomerative K=3 cluster labels:")
@@ -538,7 +538,7 @@ display(df.head())
 
 # Prepare data for PCA visualization
 pca_k3 = PCA(n_components=2)
-df_pca_agg_k3 = pca_k3.fit_transform(df_selected)
+df_pca_agg_k3 = pca_k3.fit_transform(df_scaled)
 df_pca_agg_k3 = pd.DataFrame(data=df_pca_agg_k3, columns=['Principal Component 1', 'Principal Component 2'])
 df_pca_agg_k3['cluster'] = df['cluster_agglomerative_k3']
 
@@ -560,64 +560,6 @@ plt.ylabel('Principal Component 2')
 plt.grid(True)
 plt.legend(title='Cluster')
 plt.show()
-
-"""### Inferensi dari Klastering Aglomeratif (K=4, Linkage='average')
-
-Mari kita analisis karakteristik dari keempat klaster Aglomeratif ini dan bagaimana mereka berkaitan dengan kesehatan mental.
-"""
-
-print('Mean values of features per Agglomerative cluster (K=4):')
-display(df.groupby('cluster_agglomerative_k4')[selected_features + ['mental_wellness_index_0_100']].mean().round(2))
-
-# Detailed analysis for Agglomerative K=4 clusters
-cluster_agg_k4_summary = df.groupby('cluster_agglomerative_k4')[selected_features + ['mental_wellness_index_0_100']].mean().round(2)
-
-# Calculate overall mean for comparison
-all_features_for_comparison = selected_features + ['mental_wellness_index_0_100']
-overall_means = df[all_features_for_comparison].mean().round(2)
-
-print('\nDetailed Interpretation of Agglomerative Clusters (K=4):')
-for i, row in cluster_agg_k4_summary.iterrows():
-    print(f'\n--- Cluster {i} ---')
-    print(f"Average Stress Level: {row['stress_level_0_10']:.2f}")
-    print(f"Average Productivity: {row['productivity_0_100']:.2f}")
-    print(f"Average Sleep Quality (1-5): {row['sleep_quality_1_5']:.2f}")
-    print(f"Average Screen Time (hours): {row['screen_time_hours']:.2f}")
-    print(f"Average Mental Wellness Index (0-100): {row['mental_wellness_index_0_100']:.2f}")
-
-    print("\n--- Comparison to Overall Averages ---")
-    for feature in all_features_for_comparison:
-        diff = row[feature] - overall_means[feature]
-        feature_name_display = feature.replace('_', ' ').title().replace('0 10', '0-10').replace('1 5', '1-5').replace('0 100', '0-100')
-        if diff > 0:
-            print(f"{feature_name_display}: {row[feature]:.2f} (Lebih tinggi dari rata-rata keseluruhan sebesar {abs(diff):.2f})")
-        elif diff < 0:
-            print(f"{feature_name_display}: {row[feature]:.2f} (Lebih rendah dari rata-rata keseluruhan sebesar {abs(diff):.2f})")
-        else:
-            print(f"{feature_name_display}: {row[feature]:.2f} (Sama dengan rata-rata keseluruhan)")
-
-    # Provide a more detailed interpretation based on the values
-    if row['mental_wellness_index_0_100'] > 70:
-        print("Klaster ini umumnya menunjukkan kesehatan mental yang tinggi, kemungkinan didukung oleh stres rendah, produktivitas baik, dan kualitas tidur yang baik.")
-    elif row['mental_wellness_index_0_100'] > 50:
-        print("Klaster ini umumnya menunjukkan kesehatan mental yang moderat. Mereka mungkin mengelola stres dengan baik dan mempertahankan produktivitas serta tidur yang layak.")
-    else:
-        print("Klaster ini umumnya menunjukkan kesehatan mental yang lebih rendah, seringkali terkait dengan stres yang lebih tinggi, produktivitas yang berkurang, dan tidur yang buruk.")
-
-    if row['stress_level_0_10'] > 7:
-        print("Tingkat stres yang tinggi merupakan karakteristik signifikan dari kelompok ini.")
-    elif row['stress_level_0_10'] < 4:
-        print("Tingkat stres yang rendah berkontribusi positif terhadap kesejahteraan kelompok ini.")
-
-    if row['productivity_0_100'] > 70:
-        print("Produktivitas yang tinggi diamati, menunjukkan efektivitas dan keterlibatan.")
-    elif row['productivity_0_100'] < 40:
-        print("Produktivitas yang lebih rendah dicatat, berpotensi menunjukkan tantangan dalam fokus atau motivasi.")
-
-    if row['sleep_quality_1_5'] > 3:
-        print("Kualitas tidur yang baik merupakan indikator kuat kesehatan mental dan fisik dalam kelompok ini.")
-    elif row['sleep_quality_1_5'] < 2:
-        print("Kualitas tidur yang buruk merupakan masalah kritis bagi kelompok ini, memengaruhi kesejahteraan secara keseluruhan.")
 
 """### Ringkasan Hasil Klastering Aglomeratif
 
@@ -693,7 +635,7 @@ best_dbscan_min_samples = -1
 for eps in eps_range:
     for min_samples in min_samples_range:
         dbscan = DBSCAN(eps=eps, min_samples=min_samples)
-        cluster_labels = dbscan.fit_predict(df_selected)
+        cluster_labels = dbscan.fit_predict(df_scaled)
 
         # Filter out noise points for Silhouette Score calculation
         unique_labels = set(cluster_labels)
@@ -704,7 +646,7 @@ for eps in eps_range:
         if len(unique_labels) > 1:
             # Get indices of non-noise points
             non_noise_indices = cluster_labels != -1
-            score = silhouette_score(df_selected[non_noise_indices], cluster_labels[non_noise_indices])
+            score = silhouette_score(df_scaled[non_noise_indices], cluster_labels[non_noise_indices])
 
             dbscan_silhouette_results[(eps, min_samples)] = score
 
@@ -730,7 +672,7 @@ Berdasarkan Skor Silhouette, kita sekarang akan menerapkan model DBSCAN terbaik 
 
 # Apply DBSCAN with the best parameters
 best_dbscan = DBSCAN(eps=best_dbscan_eps, min_samples=best_dbscan_min_samples)
-df['cluster_dbscan'] = best_dbscan.fit_predict(df_selected)
+df['cluster_dbscan'] = best_dbscan.fit_predict(df_scaled)
 
 print(f"DBSCAN applied with eps={best_dbscan_eps:.1f} and min_samples={best_dbscan_min_samples}.")
 print("\nFirst 5 rows of the dataset with DBSCAN cluster labels:")
@@ -768,7 +710,106 @@ Berdasarkan analisis, konfigurasi optimal untuk Klastering DBSCAN adalah:
 
 Ini menunjukkan bahwa dengan parameter-parameter ini, DBSCAN mengidentifikasi klaster dan titik *noise*. Visualisasi menunjukkan klaster-klaster ini, dengan titik *noise* (berlabel -1) biasanya muncul sebagai titik-titik terisolasi.
 
-### Inferensi Akhir dari Model Klastering Terbaik: Klastering Aglomeratif (K=2, Linkage='average')
+### Inferensi dari Klastering DBSCAN Optimal
+"""
+
+import pandas as pd
+from sklearn.preprocessing import StandardScaler
+from sklearn.cluster import DBSCAN
+
+# Ensure df is defined
+try:
+    df.head()
+except NameError:
+    print("DataFrame 'df' not found. Reloading...")
+    df = pd.read_csv('/content/drive/MyDrive/ML_MID/wellnes1.csv', sep=';')
+
+# Ensure selected_features is defined
+try:
+    _ = selected_features
+except NameError:
+    print("Variable 'selected_features' not found. Redefining...")
+    selected_features = ['stress_level_0_10', 'productivity_0_100', 'sleep_quality_1_5', 'screen_time_hours']
+
+# Ensure df_scaled and df['cluster_dbscan'] are defined for DBSCAN analysis
+try:
+    df_scaled.head()
+    _ = df['cluster_dbscan']
+except (NameError, AttributeError, KeyError):
+    print("DBSCAN clustering results not found. Re-applying DBSCAN...")
+    scaler = StandardScaler()
+    df_selected = df[selected_features]
+    df_scaled = scaler.fit_transform(df_selected)
+
+    # Optimal parameters from previous analysis (cell 75233641 output)
+    best_dbscan_eps = 0.3
+    best_dbscan_min_samples = 9
+
+    best_dbscan = DBSCAN(eps=best_dbscan_eps, min_samples=best_dbscan_min_samples)
+    df['cluster_dbscan'] = best_dbscan.fit_predict(df_scaled)
+
+
+print('Mean values of features per DBSCAN cluster:')
+# We need to include 'mental_wellness_index_0_100' in the groupby for analysis
+display(df.groupby('cluster_dbscan')[selected_features + ['mental_wellness_index_0_100']].mean().round(2))
+
+# Detailed analysis for DBSCAN clusters
+cluster_dbscan_summary = df.groupby('cluster_dbscan')[selected_features + ['mental_wellness_index_0_100']].mean().round(2)
+
+# Calculate overall mean for comparison
+all_features_for_comparison = selected_features + ['mental_wellness_index_0_100']
+overall_means = df[all_features_for_comparison].mean().round(2)
+
+print('\nDetailed Interpretation of DBSCAN Clusters:')
+for i, row in cluster_dbscan_summary.iterrows():
+    if i == -1:
+        print(f'\n--- Noise Points (Cluster {i}) ---')
+        print("These points did not fit into any dense cluster and are considered outliers or noise.\n")
+    else:
+        print(f'\n--- Cluster {i} ---')
+
+    print(f"Average Stress Level: {row['stress_level_0_10']:.2f}")
+    print(f"Average Productivity: {row['productivity_0_100']:.2f}")
+    print(f"Average Sleep Quality (1-5): {row['sleep_quality_1_5']:.2f}")
+    print(f"Average Screen Time (hours): {row['screen_time_hours']:.2f}")
+    print(f"Average Mental Wellness Index (0-100): {row['mental_wellness_index_0_100']:.2f}")
+
+    print("\n--- Comparison to Overall Averages ---")
+    for feature in all_features_for_comparison:
+        diff = row[feature] - overall_means[feature]
+        feature_name_display = feature.replace('_', ' ').title().replace('0 10', '0-10').replace('1 5', '1-5').replace('0 100', '0-100')
+        if diff > 0:
+            print(f"{feature_name_display}: {row[feature]:.2f} (Higher than overall average by {abs(diff):.2f})")
+        elif diff < 0:
+            print(f"{feature_name_display}: {row[feature]:.2f} (Lower than overall average by {abs(diff):.2f})")
+        else:
+            print(f"{feature_name_display}: {row[feature]:.2f} (Same as overall average)")
+
+    if i != -1:
+        # Provide a more detailed interpretation based on the values for actual clusters
+        if row['mental_wellness_index_0_100'] > 70:
+            print("This cluster generally exhibits high mental wellness, likely supported by low stress, good productivity, and quality sleep.")
+        elif row['mental_wellness_index_0_100'] > 50:
+            print("This cluster generally exhibits moderate mental wellness. They might manage stress well and maintain decent productivity and sleep.")
+        else:
+            print("This cluster generally exhibits lower mental wellness, often associated with higher stress, reduced productivity, and poor sleep.")
+
+        if row['stress_level_0_10'] > 7:
+            print("High stress levels are a significant characteristic of this group.")
+        elif row['stress_level_0_10'] < 4:
+            print("Low stress levels contribute positively to the well-being of this group.")
+
+        if row['productivity_0_100'] > 70:
+            print("High productivity is observed, suggesting effectiveness and engagement.")
+        elif row['productivity_0_100'] < 40:
+            print("Lower productivity is noted, potentially indicating challenges in focus or motivation.")
+
+        if row['sleep_quality_1_5'] > 3:
+            print("Good sleep quality is a strong indicator of mental and physical health in this group.")
+        elif row['sleep_quality_1_5'] < 2:
+            print("Poor sleep quality is a critical issue for this group, impacting overall well-being.")
+
+"""### Inferensi Akhir dari Model Klastering Terbaik: Klastering Aglomeratif (K=2, Linkage='average')
 
 Berdasarkan analisis komprehensif kami, Klastering Aglomeratif dengan **K=2** dan **'average' linkage** muncul sebagai model optimal, menghasilkan Skor Silhouette tertinggi **0.5662**. Ini menunjukkan bahwa model ini memberikan klaster yang paling berbeda dan terpisah dengan baik, menawarkan wawasan yang lebih jelas tentang hubungan antara fitur-fitur yang dipilih dan kesejahteraan mental. Mari kita selami karakteristik dari dua klaster menonjol ini.
 """
@@ -826,7 +867,9 @@ for i, row in cluster_agg_k3_summary.iterrows():
     elif row['sleep_quality_1_5'] < 2:
         print("Kualitas tidur yang buruk merupakan masalah kritis bagi kelompok ini, memengaruhi kesejahteraan secara keseluruhan.")
 
-"""### Mengeksplorasi Model Klastering Aglomeratif Terbaik Kedua (K=3, Linkage='average')
+"""BEST
+
+### Mengeksplorasi Model Klastering Aglomeratif Terbaik Kedua (K=3, Linkage='average')
 
 Meskipun K=2 dengan 'average' linkage memberikan Skor Silhouette tertinggi, mari kita jelajahi konfigurasi terbaik berikutnya untuk Klastering Aglomeratif, yaitu K=3 dengan 'average' linkage (Skor Silhouette: 0.4368). Ini akan memberikan perspektif alternatif tentang struktur inheren data.
 """
@@ -835,19 +878,19 @@ import numpy as np
 
 # Apply Agglomerative Clustering with K=3 and 'average' linkage
 agg_clustering_k3 = AgglomerativeClustering(n_clusters=3, linkage='average')
-df['cluster_agglomerative_k3'] = agg_clustering_k3.fit_predict(df_selected)
+df['cluster_agglomerative_k3'] = agg_clustering_k3.fit_predict(df_scaled)
 
 print(f"Agglomerative Clustering applied with K=3 and linkage='average'.")
 print("\nFirst 5 rows of the dataset with Agglomerative K=3 cluster labels:")
 display(df.head())
 
 # Calculate and display the Silhouette Score for K=3
-silhouette_score_k3 = silhouette_score(df_selected, df['cluster_agglomerative_k3'])
+silhouette_score_k3 = silhouette_score(df_scaled, df['cluster_agglomerative_k3'])
 print(f"\nSilhouette Score for Agglomerative Clustering with K=3: {silhouette_score_k3:.4f}")
 
 # Prepare data for PCA visualization
 pca_k3 = PCA(n_components=2)
-df_pca_agg_k3 = pca_k3.fit_transform(df_selected)
+df_pca_agg_k3 = pca_k3.fit_transform(df_scaled)
 df_pca_agg_k3 = pd.DataFrame(data=df_pca_agg_k3, columns=['Principal Component 1', 'Principal Component 2'])
 df_pca_agg_k3['cluster'] = df['cluster_agglomerative_k3']
 
@@ -957,3 +1000,68 @@ for i, row in cluster_agg_k3_summary.iterrows():
         print("Good sleep quality is a strong indicator of mental and physical health in this group.")
     elif row['sleep_quality_1_5'] < 2:
         print("Poor sleep quality is a critical issue for this group, impacting overall well-being.")
+
+"""**Pseudo** **Predict**
+
+dikarenakan infernce di dalam clustering itu abu-abu, maka dilkukan pseudo predict dimana dicocokan threshold tiap kelas yg telah ada dan disimpulkan masuk dalam kelas apa. Hal ini digaris bawahi bahwa dimasukkan data sesuai dengan data yg dimodel, diakrenakan jika jauh dari data asli, maka hasil tidak akan akurat, dan diharuskan untuk melakukan pemodelan ulang dengan menambah data baru. Sehingga infrence sangat aman dalam clustering adalah dengan melakukan analisis dan pemaaran deskriptif hubungan antar fitur yg telah dimasukkan ke dalam laporan dan PPT
+
+
+"""
+
+# Ambil centroid dari hasil clustering
+import numpy as np
+
+# ambil label
+labels = df['cluster_agglomerative_k3'].values
+
+# hitung centroid tiap cluster
+centroids = []
+for i in range(3):
+    cluster_points = df_scaled[labels == i]
+    centroids.append(cluster_points.mean(axis=0))
+
+centroids = np.array(centroids)
+
+print("Centroids:")
+print(centroids)
+
+# buat fungsi inference
+from scipy.spatial.distance import cdist
+
+def predict_agglomerative(data_baru, centroids):
+    data_baru = np.array(data_baru).reshape(1, -1)
+    distances = cdist(data_baru, centroids)
+
+    cluster = distances.argmin()
+    min_distance = distances.min()
+
+    return cluster, min_distance
+
+from sklearn.preprocessing import StandardScaler
+
+# Re-initialize and fit the scaler on the selected features to ensure correct feature count
+scaler = StandardScaler()
+scaler.fit(df_selected)
+
+data_baru = [[7, 50, 2, 8]]
+data_baru_scaled = scaler.transform(data_baru)
+
+cluster, distance = predict_agglomerative(data_baru_scaled[0], centroids)
+
+print(f"New data assigned to Cluster: {cluster}")
+print(f"Distance to Centroid: {distance:.2f}")
+
+"""### Perbandingan Model Klastering
+
+Dari eksperimen yang telah dilakukan, kita dapat menyimpulkan perbandingan model sebagai berikut:
+
+*   **K-Means:** Meskipun skor Silhouette tertinggi tercapai pada K=2 (0.4627), kita mengeksplorasi K=4 (0.3859) untuk analisis lebih lanjut. K-Means menghasilkan klaster yang cenderung berbentuk bulat dan berukuran sama.
+
+*   **Klastering Aglomeratif:** Model terbaik ditemukan dengan K=2 dan metode linkage 'average', mencapai skor Silhouette tertinggi sebesar 0.5662, menunjukkan pemisahan klaster yang sangat baik. Eksplorasi tambahan dengan K=3 (0.4368) juga memberikan wawasan yang berharga tentang struktur data.
+
+*   **DBSCAN:** Model DBSCAN terbaik menggunakan `eps` 0.3 dan `min_samples` 9, dengan skor Silhouette 0.5133. DBSCAN unggul dalam menemukan klaster berbentuk arbitrer dan mengidentifikasi titik *noise*, yang tidak terdeteksi oleh algoritma lain.
+
+### Konversi Klastering Menjadi Model Klasifikasi
+
+Kita akan menggunakan hasil klastering Aglomeratif dengan K=3 sebagai label target untuk melatih model klasifikasi. Ini akan membantu kita melihat seberapa baik fitur yang dipilih dapat memprediksi keanggotaan klaster tersebut.
+"""
